@@ -25,7 +25,6 @@ class TaskListTableViewController: UITableViewController {
     
     // The number of sections
     override func numberOfSections(in tableView: UITableView) -> Int {
-        print("got here \(TaskController.shared.fetchedResultsController.sections?.count)")
         return TaskController.shared.fetchedResultsController.sections?.count ?? 0
     }
 
@@ -36,7 +35,7 @@ class TaskListTableViewController: UITableViewController {
     
     // Configure each section header
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return TaskController.shared.fetchedResultsController.sections?[section].name == "0" ? "Incomplete" : "Complete"
+        return TaskController.shared.fetchedResultsController.sectionIndexTitles[section] == "0" ? "Incomplete" : "Complete"
     }
 
     // Configure each cell
@@ -90,18 +89,17 @@ class TaskListTableViewController: UITableViewController {
 extension TaskListTableViewController: ButtonTableViewCellDelegate {
     
     func buttonCellButtonTapped(for cell: ButtonTableViewCell) {
-//        // Get the index path of the cell
-//        guard let indexPath = tableView.indexPath(for: cell) else { return }
-//
-//        // Get the task object that was clicked
-//        let task = TaskController.shared.fetchedResultsController.object(at: indexPath)
-//        print("got here \(task)")
-//        // Toggle the value of the task's isCompleted property
-//        TaskController.shared.toggleIsCompleted(for: task)
-//        print("got here \(task)")
-//        // Refresh the view to reflect the changes
-//        cell.updateView(withTask: task)
-//        print("got here 2")
+        // Get the index path of the cell
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+
+        // Get the task object that was clicked
+        let task = TaskController.shared.fetchedResultsController.object(at: indexPath)
+        
+        // Toggle the value of the task's isCompleted property
+        TaskController.shared.toggleIsCompleted(for: task)
+        
+        // Refresh the view to reflect the changes
+        cell.updateView(withTask: task)
     }
 }
 
@@ -118,6 +116,7 @@ extension TaskListTableViewController: NSFetchedResultsControllerDelegate {
         tableView.endUpdates()
     }
     
+    // Adding and deleting cells
     func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         
         switch type {
@@ -139,6 +138,23 @@ extension TaskListTableViewController: NSFetchedResultsControllerDelegate {
             
         @unknown default:
             fatalError()
+        }
+    }
+    
+    // Adding and deleting sections
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
+
+        switch type {
+            case .insert:
+                tableView.insertSections(IndexSet(integer: sectionIndex), with: .fade)
+            case .delete:
+                tableView.deleteSections(IndexSet(integer: sectionIndex), with: .fade)
+            case .move:
+                break
+            case .update:
+                break
+            @unknown default:
+                fatalError()
         }
     }
 }
