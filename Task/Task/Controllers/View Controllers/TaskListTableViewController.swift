@@ -2,66 +2,70 @@
 //  TaskListTableViewController.swift
 //  Task
 //
-//  Created by Shannon Draeker on 4/22/20.
+//  Created by Shannon Draeker on 4/23/20.
 //  Copyright © 2020 Karl Pfister. All rights reserved.
 //
 
 import UIKit
+import CoreData
 
 class TaskListTableViewController: UITableViewController {
-    
     
     // MARK: - Lifecycle Methods
 
     override func viewDidLoad() {
         super.viewDidLoad()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(true)
         
-        // Reload the data so that it refreshes when the user returns from the detail view
-        tableView.reloadData()
+        // Claim the role of being the delegate for the fetchRequestController
+        TaskController.shared.fetchedResultsController.delegate = self
     }
 
     
     // MARK: - Table view data source
-
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return TaskController.shared.tasks.count
+    
+    // The number of sections
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        print("got here \(TaskController.shared.fetchedResultsController.sections?.count)")
+        return TaskController.shared.fetchedResultsController.sections?.count ?? 0
     }
 
+    // The number of rows
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return TaskController.shared.fetchedResultsController.sections?[section].numberOfObjects ?? 0
+    }
+    
+    // Configure each section header
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return TaskController.shared.fetchedResultsController.sections?[section].name == "0" ? "Incomplete" : "Complete"
+    }
+
+    // Configure each cell
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "taskCell", for: indexPath) as? ButtonTableViewCell else { return UITableViewCell() }
-        
-        // Get the task to be displayed
-        let task = TaskController.shared.tasks[indexPath.row]
-        
-        // Fill in the cell's details
-        cell.updateView(withTask: task)
-        
-        // Claim the role of the cell's delegate
-        cell.delegate = self
 
+        // Get the task to be displayed in the cell
+        let task = TaskController.shared.fetchedResultsController.object(at: indexPath)
+        
+        // Update the cell's view with the task and claim the role of delegate for the cell's button handling protocol
+        cell.updateView(withTask: task)
+        cell.delegate = self
+        
         // Return the cell
         return cell
     }
-    
-    // Override to support editing the table view.
+
+    // Allow cells to be deleted
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             // Get the task to be deleted
-            let taskToDelete = TaskController.shared.tasks[indexPath.row]
+            let taskToDelete = TaskController.shared.fetchedResultsController.object(at: indexPath)
             
             // Delete the task
             TaskController.shared.delete(task: taskToDelete)
-            
-            // Update the view in the tableview
-            tableView.deleteRows(at: [indexPath], with: .fade)
         }
     }
+
     
-   
     // MARK: - Navigation
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -72,7 +76,7 @@ class TaskListTableViewController: UITableViewController {
                 else { return }
             
             // Get the task object that was selected
-            let task = TaskController.shared.tasks[indexPath.row]
+            let task = TaskController.shared.fetchedResultsController.object(at: indexPath)
             
             // Pass the task object to the detail view controller
             destinationVC.task = task
@@ -80,21 +84,61 @@ class TaskListTableViewController: UITableViewController {
     }
 }
 
+
 // MARK: - Adopt Button Protocol
 
 extension TaskListTableViewController: ButtonTableViewCellDelegate {
     
     func buttonCellButtonTapped(for cell: ButtonTableViewCell) {
-        // Get the index path of the cell
-        guard let indexPath = tableView.indexPath(for: cell) else { return }
+//        // Get the index path of the cell
+//        guard let indexPath = tableView.indexPath(for: cell) else { return }
+//
+//        // Get the task object that was clicked
+//        let task = TaskController.shared.fetchedResultsController.object(at: indexPath)
+//        print("got here \(task)")
+//        // Toggle the value of the task's isCompleted property
+//        TaskController.shared.toggleIsCompleted(for: task)
+//        print("got here \(task)")
+//        // Refresh the view to reflect the changes
+//        cell.updateView(withTask: task)
+//        print("got here 2")
+    }
+}
+
+
+// MARK: - Conform to NSFRC Protocol
+
+extension TaskListTableViewController: NSFetchedResultsControllerDelegate {
+    
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        tableView.beginUpdates()
+    }
+    
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        tableView.endUpdates()
+    }
+    
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         
-        // Get the task object that was clicked
-        let task = TaskController.shared.tasks[indexPath.row]
-        
-        // Toggle the value of the task's isCompleted property
-        TaskController.shared.toggleIsCompleted(for: task)
-        
-        // Refresh the view to reflect the changes
-        cell.updateView(withTask: task)
+        switch type {
+        case .delete:
+            guard let indexPath = indexPath else { break }
+            tableView.deleteRows(at: [indexPath], with: .fade)
+            
+        case .insert:
+            guard let newIndexPath = newIndexPath else { break }
+            tableView.insertRows(at: [newIndexPath], with: .automatic)
+            
+        case .move:
+            guard let indexPath = indexPath, let newIndexPath = newIndexPath else { break }
+            tableView.moveRow(at: indexPath, to: newIndexPath)
+            
+        case .update:
+            guard let indexPath = indexPath else { break }
+            tableView.reloadRows(at: [indexPath], with: .automatic)
+            
+        @unknown default:
+            fatalError()
+        }
     }
 }

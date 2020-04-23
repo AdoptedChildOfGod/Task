@@ -18,8 +18,27 @@ class TaskController {
     
     // MARK: - Source of Truth
     
-    var tasks: [Task] { fetchTasks() }
-
+    let fetchedResultsController: NSFetchedResultsController<Task>
+    
+    init() {
+        // Create the fetch request
+        let request: NSFetchRequest<Task> = Task.fetchRequest()
+        
+        // Define how the fetched data should be sorted
+        request.sortDescriptors = [NSSortDescriptor(key: "isComplete", ascending: true), NSSortDescriptor(key: "due", ascending: true)]
+        
+        // Create the controller and define how it should handle the fetched results
+        let requestsController: NSFetchedResultsController<Task> = NSFetchedResultsController(fetchRequest: request, managedObjectContext: CoreDataStack.context, sectionNameKeyPath: "isComplete", cacheName: nil)
+        fetchedResultsController = requestsController
+        
+        // Use the fetched results controller to fetch the data
+        do {
+          try fetchedResultsController.performFetch()
+        } catch {
+             print("There was an error performing the fetch \(error.localizedDescription)")
+        }
+    }
+    
     
     // MARK: - CRUD Methods
     
@@ -74,22 +93,5 @@ class TaskController {
         } catch let saveError {
             print("Error in saving to Core Data: \(saveError)")
         }
-    }
-    
-    // Fetch the tasks from Core Data
-    func fetchTasks() -> [Task] {
-        // Get all the tasks from the Core Data
-        let moc = CoreDataStack.context
-        let fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()
-        let fetchResults = try? moc.fetch(fetchRequest)
-
-        // Return the result
-        return fetchResults ?? []
-        
-//        let mockTask1 = Task(name: "say hi", notes: nil, due: Date())
-//        let mockTask2 = Task(name: "do homework", notes: "code and stuff", due: nil)
-//        let mockTask3 = Task(name: "eat food", notes: "bacon", due: nil, isComplete: true)
-//        
-//        return [mockTask1, mockTask2, mockTask3]
     }
 }
